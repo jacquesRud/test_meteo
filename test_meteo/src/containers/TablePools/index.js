@@ -4,17 +4,58 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "react-bootstrap";
 import TestMeteoTable from "../../components/TestMeteoTable";
 import SelectedPoolContext from "../selected-pool-context";
-import { useReactQuery } from "../services";
+import {
+    useReactSequentialQuery,
+    useReactQueries,
+    useMergeState,
+} from "../services";
+import { apiKey } from "../../apiKeystore";
 
 export default function TablePools({ data, onChange }) {
     let navigate = useNavigate();
     const [_, setContext] = useContext(SelectedPoolContext);
-    const [apiUUID, setAPIUUID] = useState("");
-    const { data: dataGit, isLoading } = useReactQuery({
-        criteria: apiUUID,
-        url: `https://api.github.com/search/users?q=${apiUUID}`,
-        enabled: !!apiUUID,
+    const [
+        { apiCountSequential, apiCountParallel, apiUUID, isParallel },
+        setState,
+    ] = useMergeState({
+        apiCountSequential: [],
+        apiCountParallel: [],
     });
+
+    const resParallelQuery = useReactQueries({
+        criterias: apiCountParallel,
+        url: `http://api.openweathermap.org/geo/1.0/direct?q=Paris&limit=1&appid=${apiKey}`,
+        enabled: !!apiCountParallel && isParallel,
+    });
+
+    const resSequentialQuery = useReactSequentialQuery({
+        criterias: apiCountSequential,
+        url: `http://api.openweathermap.org/geo/1.0/direct?q=Paris&limit=1&appid=${apiKey}`,
+        enabled: !!apiCountSequential && !isParallel,
+    });
+
+    useMemo(() => {
+        if (
+            resParallelQuery.every(({ isLoading }) => !isLoading) &&
+            isParallel &&
+            resParallelQuery.length > 0 &&
+            apiUUID
+        ) {
+            data.find(({ id }) => id === apiUUID).dateRunFinished =
+                new Date().toLocaleString();
+        }
+        if (
+            resSequentialQuery.every(({ isLoading }) => !isLoading) &&
+            !isParallel &&
+            resSequentialQuery.length > 0 &&
+            apiUUID
+        ) {
+            data.find(({ id }) => id === apiUUID).dateRunFinished =
+                new Date().toLocaleString();
+            setState({ resSequentialQuery: [], apiUUID: null });
+        }
+    }, [resSequentialQuery, resParallelQuery]);
+
     const columns = useMemo(
         () => [
             {
@@ -89,29 +130,34 @@ export default function TablePools({ data, onChange }) {
                 Header: "Actions",
                 Cell: ({ row: { original } }) =>
                     original.isNew ? (
+                        <>
+                            <Button
+                                onClick={() => {
+                                    delete original["isNew"];
+                                    onChange();
+                                }}
+                            >
+                                Save
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    runQuery(original);
+                                    delete original["isNew"];
+                                    onChange();
+                                }}
+                            >
+                                Save and Run
+                            </Button>
+                        </>
+                    ) : (
                         <Button
                             onClick={() => {
-                                delete original["isNew"];
-                                onChange();
-                            }}
-                        >
-                            Save
-                        </Button>
-                    ) : original.isParallel ? (
-                        <Button
-                            onClick={() => {
-                                original.dateRunStarted =
-                                    new Date().toLocaleString();
-                                setAPIUUID(original.id);
-                                if (!isLoading && dataGit) {
-                                    original.dateRunFinished =
-                                        new Date().toLocaleString();
-                                }
+                                runQuery(original);
                             }}
                         >
                             Run
                         </Button>
-                    ) : null,
+                    ),
             },
         ],
         [data]
@@ -120,4 +166,22 @@ export default function TablePools({ data, onChange }) {
     const tableInstance = useTable({ columns, data });
 
     return <TestMeteoTable tableInstance={tableInstance} />;
+
+    function runQuery(pool) {
+        const arrayCount = Array.from(Array(pool.count).keys());
+        pool.dateRunStarted = new Date().toLocaleString();
+        if (pool.isParallel) {
+            setState({
+                apiCountParallel: arrayCount,
+                apiUUID: pool.id,
+                isParallel: true,
+            });
+        } else {
+            setState({
+                apiCountSequential: arrayCount,
+                apiUUID: pool.id,
+                isParallel: false,
+            });
+        }
+    }
 }

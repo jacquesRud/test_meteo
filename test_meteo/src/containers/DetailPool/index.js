@@ -20,9 +20,11 @@ export default function DetailPool() {
                 </Button>
             </div>
             <div>
-                {Object.keys(context).map((key) => (
-                    <li>{dictKeyPool[key] + " : " + context[key]}</li>
-                ))}
+                {Object.keys(context).map((key) =>
+                    dictKeyPool[key] ? (
+                        <li>{dictKeyPool[key] + " : " + context[key]}</li>
+                    ) : null
+                )}
             </div>
         </>
     );

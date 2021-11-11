@@ -1,7 +1,7 @@
 export const mockData = [
     {
         id: "60add920-0127-4f8b-be7e-34ae7e79d21f-pool1",
-        count: 100,
+        count: 10,
         isParallel: true,
         dateCreated: "12-07-1998 09:00:34",
         dateRunStarted: "12-07-1998 12:11:11",
@@ -9,8 +9,8 @@ export const mockData = [
         name: "pool1",
     },
     {
-        id: "60add920-0127-4f8b-be7e-34ae7e79d21f-pool2",
-        count: 100,
+        id: "60ad920-0127-4f8b-be7e-34ae7e79d21f-pool2",
+        count: 5,
         isParallel: false,
         dateCreated: "12-07-1994 09:00:34",
         dateRunStarted: "12-07-1994 10:00:34",
